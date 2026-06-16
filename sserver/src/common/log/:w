@@ -214,51 +214,6 @@ std::string Logger::CurrentLogFilePath(){
     return LogFilePath();
 }
 
-void Logger::Debug(const std::string &message){
-    Log(LogLevel::kDebug, message);
-}
-
-void Logger::Info(const std::string &message){
-    Log(LogLevel::kInfo, message);
-}
-
-void Logger::Warn(const std::string &message){
-    Log(LogLevel::kWarn, message);
-}
-
-void Logger::Error(const std::string &message){
-    Log(LogLevel::kError, message);
-}
-
-void Logger::Log(LogLevel level, const std::string &message){
-    if(level == LogLevel::kDebug && !VerboseFlag()){
-        return;
-    }
-
-    const std::string prefix = FormatPrefix(level);
-    std::lock_guard<std::mutex> lock(LogMutex());
-    std::ostream &output = OutputStreamForLevel(level);
-    EnsureLogFileInitialized();
-    std::ofstream &file_output = LogFileStream();
-
-    std::size_t start = 0;
-    while(start <= message.size()){
-        const std::size_t end = message.find('\n', start);
-        const std::string line = end == std::string::npos
-                ? message.substr(start)
-                : message.substr(start, end - start);
-        output << prefix << line << std::endl;
-        if(file_output.is_open()){
-            file_output << prefix << line << std::endl;
-        }
-
-        if(end == std::string::npos){
-            break;
-        }
-        start = end + 1;
-    }
-}
-
 }//namespace log
 }//namespace common
 }//namespace sserver
