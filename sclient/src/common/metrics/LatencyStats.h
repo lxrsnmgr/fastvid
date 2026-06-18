@@ -3,8 +3,10 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <numeric>
 #include <vector>
 #include <string>
+#include <algorithm>
 
 namespace sclient{
 //延迟统计概要
@@ -73,7 +75,7 @@ public:
 
     //获取平均值
     double average_ms() const{
-        return Snapshot();
+        return Snapshot().avg_ms;
     }
 
     //获取采样总数
@@ -84,7 +86,8 @@ public:
     //获取统计快照
     //返回包含各种统计指标的摘要对象
     LatencySummary Snapshot() const{
-        Refr
+        RefreshSummary(false);
+        return _cached_summary;
     }
 
     //重置所有统计数据
@@ -101,7 +104,19 @@ public:
     //格式化统计信息为字符串
     //输出格式：name count=X min=Xms avg=Xms p50=Xms p95=Xms p99=Xms max=Xms last=Xms
     std::string Format(const std::string &name) const{
-        
+        RefreshSummary(true);
+        const LatencySummary summary = _cached_summary;
+        std::ostringstream stream;
+        stream << name
+               << " count=" << summary.count
+               << " min=" << std::fixed << std::setprecision(2) << summary.min_ms << "ms"
+               << " avg=" << summary.avg_ms << "ms"
+               << " p50=" << summary.p50_ms << "ms"
+               << " p95=" << summary.p95_ms << "ms"
+               << " p99=" << summary.p99_ms << "ms"
+               << " max=" << summary.max_ms << "ms"
+               << " last=" << summary.last_ms << "ms";
+        return stream.str();
     }
 
 private:
@@ -143,8 +158,42 @@ private:
             std::copy(_samples_ms.begin(), _samples_ms.begin() + static_cast<std::ptrdiff_t>(_sample_count), ordered_samples.begin());
         } else {
             //缓冲区已回绕，需要分两段复制
-            const std::size_t first_segment_size
+            const std::size_t first_segment_size = _max_samples - _next_index;
+            std::copy(
+                      _samples_ms.begin() + static_cast<std::ptrdiff_t>(_next_index),
+                      _samples_ms.end(),
+                      ordered_samples.begin());
+            std::copy(
+                      _samples_ms.begin(),
+                      _samples_ms.begin() + static_cast<std::ptrdiff_t>(_next_index),
+                      ordered_samples.begin() + static_cast<std::ptrdiff_t>(first_segment_size));
         }
+
+        //排序后计算百分位数
+        std::vector<double> sorted_samples = ordered_samples;
+        std::sort(sorted_samples.begin(), sorted_samples.end());
+        summary.min_ms = sorted_samples.front();
+        summary.max_ms = sorted_samples.back();
+        summary.avg_ms = std::accumulate(ordered_samples.begin(), ordered_samples.end(), 0.0) / 
+                static_cast<std::ptrdiff_t>(ordered_samples.size());
+        summary.p50_ms = PercentileFormSorted(sorted_samples, 0.50);
+        summary.p95_ms = PercentileFormSorted(sorted_samples, 0.95);
+        summary.p99_ms = PercentileFormSorted(sorted_samples, 0.99);
+        return summary;
+    }
+
+    //从已排序数组计算百分位数
+    //使用线性插值法，确保结果在[min,max]范围内
+    static double PercentileFormSorted(const std::vector<double> &values, double percentile){
+        if(values.empty()){
+            return 0.0;
+        }
+
+        const double index = percentile * static_cast<double>(values.size() - 1);
+        const std::size_t lower = static_cast<std::size_t>(index);
+        const std::size_t upper = std::min(lower + 1, values.size() - 1);
+        const double fraction = index - static_cast<double>(lower);
+        return values[lower] + (values[upper] - values[lower]) * fraction;
     }
 
 private:
