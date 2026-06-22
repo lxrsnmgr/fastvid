@@ -25,12 +25,12 @@ struct LatencySummary{
 //延迟统计工具类
 //使用环形缓冲区存储最近N个采样值，支持计算各种统计指标
 //采用惰性刷新策略，避免每次查询都重新排序
-class LatencySatas{
+class LatencyStats{
 public:
     //构造函数
     //max_samples 环形缓冲区大小，即最多保留的采样值
     //snapshot_refresh_interval 快照刷新间隔(采样次数)
-    explicit LatencySatas(std::size_t max_samples = 4096, std::size_t snapshot_refresh_interval = 8)
+    explicit LatencyStats(std::size_t max_samples = 4096, std::size_t snapshot_refresh_interval = 8)
         : _max_samples(max_samples),
           _snapshot_refresh_interval(std::max<std::size_t>(1, snapshot_refresh_interval)),
           _samples_ms(max_samples, 0.0),
