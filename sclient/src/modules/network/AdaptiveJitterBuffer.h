@@ -39,6 +39,7 @@ struct AdaptiveJitterBufferConfig{
 //- 网络较差时使用流畅模式，优先保证播放流畅
 //状态机转换基于连续采样和 p95 抖动值，避免频繁切换
 class AdaptiveJitterBuffer{
+public:
     AdaptiveJitterBuffer()
         : _active_mode(JitterBufferMode::kBypass),
           _network_quality(NetworkQuality::kExcellent),

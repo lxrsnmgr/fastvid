@@ -40,7 +40,7 @@ struct MessageHeader{
 
 //帧诊断元数据
 //用于端到端延迟测量和性能分析
-struct FragmeDiagnosticMetaData{
+struct FrameDiagnosticMetaData{
     std::uint64_t sequence;                     //帧序列号
     std::uint64_t capture_timestamp_ns;         //采集时间戳（纳秒）
     std::uint64_t encode_start_timestamp_ns;    //编码开始时间戳
